@@ -21,7 +21,8 @@ const app = express();
 
 app.use(helmet());
 app.use(cors({
-  origin: 'http://localhost:5173',     // Your frontend URL
+  // origin: 'http://localhost:5173',     // Your frontend URL
+  origin: 'https://www.thesrsevents.com/',     // Your frontend URL
   credentials: true,                   // ← THIS IS CRITICAL
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
