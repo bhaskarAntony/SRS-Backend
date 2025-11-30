@@ -6,14 +6,14 @@ const { validateBooking, handleValidationErrors } = require('../middleware/valid
 const router = express.Router();
 
 
-router.use(authenticate);
+// router.use(authenticate);
 
-router.post('/',  bookingController.createBooking);
-router.get('/user', bookingController.getUserBookings);
-router.get('/:id', bookingController.getBookingById);
+router.post('/', authenticate, bookingController.createBooking);
+router.get('/user',authenticate, bookingController.getUserBookings);
+router.get('/:id',authenticate, bookingController.getBookingById);
 router.put('/:id/cancel', bookingController.cancelBooking);
 router.get('/:id/ticket', bookingController.downloadTicket);
-router.post('/scan-qr', bookingController.scanQRCode);
+router.post('/scan-qr', authenticate, bookingController.scanQRCode);
 
 
 router.post('/payment/initiate', bookingController.initiatePayment);

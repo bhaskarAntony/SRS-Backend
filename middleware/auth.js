@@ -16,7 +16,6 @@ exports.authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, "shhdhdhdhdhhdhd"); // ← FIXED!
     console.log(decoded)
     const user = await User.findById(decoded.id);
-    console.log(user)
     if (!user) {
     console.log("no user")
       return res.status(401).json({ message: 'User not found' });

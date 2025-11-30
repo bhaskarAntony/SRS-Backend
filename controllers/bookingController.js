@@ -101,10 +101,12 @@ exports.createBooking = async (req, res) => {
 
 // Get user bookings
 exports.getUserBookings = async (req, res) => {
+    console.log("userId = ", req.user);
   try {
     const userId = req.user._id;
-
-    const bookings = await Booking.find({ user: userId })
+    var bookings = [];
+    if(req.user.role=="admin"){
+      bookings = await Booking.find()
       .populate({
         path: 'event',
         select: 'title startDate endDate location bannerImage memberPrice guestPrice userPrice maxCapacity',
@@ -112,6 +114,16 @@ exports.getUserBookings = async (req, res) => {
       })
       .sort({ createdAt: -1 })
       .lean();
+    }else{
+      bookings = await Booking.find({ user: userId })
+      .populate({
+        path: 'event',
+        select: 'title startDate endDate location bannerImage memberPrice guestPrice userPrice maxCapacity',
+        match: { isDeleted: { $ne: true } } // safety
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+    }
 
     // Filter out bookings where event was deleted (populate returns null)
     const validBookings = bookings.filter(b => b.event !== null);
@@ -330,7 +342,7 @@ exports.initiatePayment = async (req, res) => {
         orderId: order.id,
         amount: order.amount,
         currency: order.currency,
-        key: process.env.RAZORPAY_KEY_ID
+        key: "rzp_test_RluprVlNeV6oUv"
       }
     });
   } catch (error) {
@@ -343,12 +355,28 @@ exports.initiatePayment = async (req, res) => {
 };
 
 // Verify payment
+// controllers/bookingController.js
 exports.verifyPayment = async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId } = req.body;
+    const {
+      bookingId,
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature
+    } = req.body;
 
-    // Verify payment signature
-    const isValid = razorpayService.verifyPayment(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing payment details'
+      });
+    }
+
+    const isValid = razorpayService.verifyPayment(
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature
+    );
 
     if (!isValid) {
       return res.status(400).json({
@@ -357,29 +385,41 @@ exports.verifyPayment = async (req, res) => {
       });
     }
 
-    // Update booking
     const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ status: 'error', message: 'Booking not found' });
+    }
+
+    // Update booking
     booking.paymentStatus = 'completed';
     booking.status = 'confirmed';
-    booking.paymentDetails.razorpayPaymentId = razorpay_payment_id;
-    booking.paymentDetails.razorpaySignature = razorpay_signature;
-    booking.paymentDetails.paymentDate = new Date();
-    
+    booking.paymentDetails = {
+      razorpayOrderId: razorpay_order_id,
+      razorpayPaymentId: razorpay_payment_id,
+      razorpaySignature: razorpay_signature,
+      paymentDate: new Date()
+    };
+
     await booking.save();
 
-    // Send confirmation email
-    await emailService.sendBookingConfirmation(booking);
+    // Generate fresh QR code image if needed (optional)
+    const qrCodeImage = await QRCode.toDataURL(booking.qrCode);
+    booking.qrCodeImage = qrCodeImage;
+    await booking.save();
 
-    res.status(200).json({
+    // Send email with ticket
+    // await emailService.sendBookingConfirmation(booking);
+
+    res.json({
       status: 'success',
-      message: 'Payment verified successfully',
+      message: 'Payment verified',
       data: booking
     });
   } catch (error) {
+    console.error('Payment verify error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Payment verification failed',
-      error: error.message
+      message: 'Server error during verification'
     });
   }
 };
