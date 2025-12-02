@@ -41,10 +41,10 @@ const bookingSchema = new mongoose.Schema({
 sponsoringMemberId: { type: mongoose.Schema.Types.ObjectId, ref: 'SRS_User' },
   memberIdInput: { type: String }, // the MEMBERID guest typed
  guestDetails: {
-    firstName: { type: String, required: true },
+    firstName: { type: String},
     lastName: String,
-    email: { type: String, required: true },
-    phone: { type: String, required: true }
+    email: { type: String},
+    phone: { type: String}
   },
   
   
