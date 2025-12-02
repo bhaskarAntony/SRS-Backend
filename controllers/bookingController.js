@@ -7,13 +7,13 @@ const razorpayService = require('../services/razorpayService');
 const emailService = require('../services/emailService');
 const pdfService = require('../services/pdfService');
 
-// Create booking
+
 exports.createBooking = async (req, res) => {
   try {
     const { eventId, seatCount, bookingType, guestDetails, sponsoringMemberId } = req.body;
     const userId = req.user._id;
 
-    // Get event details
+    
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({
@@ -22,7 +22,7 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Check availability
+    
     if (event.bookedSeats + seatCount > event.maxCapacity) {
       return res.status(400).json({
         status: 'error',
@@ -30,7 +30,7 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Check booking limits
+    
     const maxTickets = bookingType === 'member' ? event.maxTicketsPerMember :
                       bookingType === 'guest' ? event.maxTicketsPerGuest :
                       event.maxTicketsPerUser;
@@ -42,23 +42,23 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Calculate price
+    
     const unitPrice = bookingType === 'member' ? event.memberPrice :
                      bookingType === 'guest' ? event.guestPrice :
                      event.userPrice;
     
     const totalAmount = unitPrice * seatCount;
 
-    // Generate QR code
+    
     const qrCode = crypto.randomBytes(16).toString('hex');
     const qrCodeImage = await QRCode.toDataURL(qrCode);
     const timestamp = Date.now().toString();
     const random = Math.random().toString(36).substring(2, 8).toUpperCase();
     const bookingId = `SRS${timestamp}${random}`;
   
-  // Set QR scan limit equal to seat count
+  
      const qrScanLimit = seatCount;
-    // Create booking
+    
     const bookingData = {
       user: userId,
       event: eventId,
@@ -76,10 +76,10 @@ exports.createBooking = async (req, res) => {
 
     const booking = await Booking.create(bookingData);
 
-    // Update event booked seats
+    
     await event.updateBookedSeats(seatCount);
 
-    // Add loyalty points for members
+    
     if (req.user.role === 'member') {
       await req.user.addLoyaltyPoints(10 * seatCount);
     }
@@ -99,7 +99,7 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// Get user bookings
+
 exports.getUserBookings = async (req, res) => {
     console.log("userId = ", req.user);
   try {
@@ -110,7 +110,7 @@ exports.getUserBookings = async (req, res) => {
       .populate({
         path: 'event',
         select: 'title startDate endDate location bannerImage memberPrice guestPrice userPrice maxCapacity',
-        match: { isDeleted: { $ne: true } } // safety
+        match: { isDeleted: { $ne: true } } 
       })
       .sort({ createdAt: -1 })
       .lean();
@@ -119,13 +119,13 @@ exports.getUserBookings = async (req, res) => {
       .populate({
         path: 'event',
         select: 'title startDate endDate location bannerImage memberPrice guestPrice userPrice maxCapacity',
-        match: { isDeleted: { $ne: true } } // safety
+        match: { isDeleted: { $ne: true } } 
       })
       .sort({ createdAt: -1 })
       .lean();
     }
 
-    // Filter out bookings where event was deleted (populate returns null)
+    
     const validBookings = bookings.filter(b => b.event !== null);
 
     res.status(200).json({
@@ -143,7 +143,7 @@ exports.getUserBookings = async (req, res) => {
   }
 };
 
-// Get booking by ID
+
 exports.getBookingById = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
@@ -158,7 +158,7 @@ exports.getBookingById = async (req, res) => {
       });
     }
 
-    // Check if user owns this booking or is admin
+    
     if (booking.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         status: 'error',
@@ -179,7 +179,7 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
-// Cancel booking
+
 exports.cancelBooking = async (req, res) => {
   try {
     const { reason } = req.body;
@@ -192,7 +192,7 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    // Check ownership
+    
     if (booking.user.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         status: 'error',
@@ -200,7 +200,7 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    // Check if booking can be cancelled
+    
     if (booking.status === 'cancelled') {
       return res.status(400).json({
         status: 'error',
@@ -208,10 +208,10 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    // Cancel booking
+    
     await booking.cancelBooking(reason, req.user._id);
 
-    // Update event booked seats
+    
     const event = await Event.findById(booking.event);
     await event.updateBookedSeats(-booking.seatCount);
 
@@ -228,7 +228,7 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
-// Download ticket
+
 exports.downloadTicket = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
@@ -242,7 +242,6 @@ exports.downloadTicket = async (req, res) => {
       });
     }
 
-    // Check ownership
     if (booking.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         status: 'error',
@@ -250,7 +249,6 @@ exports.downloadTicket = async (req, res) => {
       });
     }
 
-    // Generate PDF ticket
     const pdfBuffer = await pdfService.generateTicket(booking);
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -265,7 +263,6 @@ exports.downloadTicket = async (req, res) => {
   }
 };
 
-// Scan QR code
 exports.scanQRCode = async (req, res) => {
   try {
     const { qrCode, location, notes } = req.body;
@@ -291,7 +288,6 @@ exports.scanQRCode = async (req, res) => {
       });
     }
 
-    // Scan QR code
     await booking.scanQR(req.user._id, location, notes);
 
     res.status(200).json({
@@ -316,7 +312,6 @@ exports.scanQRCode = async (req, res) => {
   }
 };
 
-// Initiate payment
 exports.initiatePayment = async (req, res) => {
   try {
     const { bookingId, amount } = req.body;
@@ -329,10 +324,8 @@ exports.initiatePayment = async (req, res) => {
       });
     }
 
-    // Create Razorpay order
     const order = await razorpayService.createOrder(amount, bookingId);
 
-    // Update booking with payment details
     booking.paymentDetails.razorpayOrderId = order.id;
     await booking.save();
 
@@ -354,8 +347,7 @@ exports.initiatePayment = async (req, res) => {
   }
 };
 
-// Verify payment
-// controllers/bookingController.js
+
 exports.verifyPayment = async (req, res) => {
   try {
     const {
@@ -390,7 +382,6 @@ exports.verifyPayment = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Booking not found' });
     }
 
-    // Update booking
     booking.paymentStatus = 'completed';
     booking.status = 'confirmed';
     booking.paymentDetails = {
@@ -402,13 +393,11 @@ exports.verifyPayment = async (req, res) => {
 
     await booking.save();
 
-    // Generate fresh QR code image if needed (optional)
     const qrCodeImage = await QRCode.toDataURL(booking.qrCode);
     booking.qrCodeImage = qrCodeImage;
     await booking.save();
 
-    // Send email with ticket
-    // await emailService.sendBookingConfirmation(booking);
+    
 
     res.json({
       status: 'success',
@@ -424,7 +413,6 @@ exports.verifyPayment = async (req, res) => {
   }
 };
 
-// Get all bookings (Admin)
 exports.getAllBookings = async (req, res) => {
   try {
     const { page = 1, limit = 20, status, eventId, userId } = req.query;
@@ -461,22 +449,19 @@ exports.getAllBookings = async (req, res) => {
   }
 };
 
-// Create manual booking (Admin)
 exports.createManualBooking = async (req, res) => {
   try {
     const { eventId, userDetails, seatCount, bookingType, paymentMethod, transactionId } = req.body;
 
-    // Get or create user
     let user = await User.findOne({ email: userDetails.email });
     if (!user) {
       user = await User.create({
         ...userDetails,
-        password: 'temp123', // Temporary password
+        password: 'temp123', 
         role: 'user'
       });
     }
 
-    // Get event
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({
@@ -485,18 +470,15 @@ exports.createManualBooking = async (req, res) => {
       });
     }
 
-    // Calculate price
     const unitPrice = bookingType === 'member' ? event.memberPrice :
                      bookingType === 'guest' ? event.guestPrice :
                      event.userPrice;
     
     const totalAmount = unitPrice * seatCount;
 
-    // Generate QR code
     const qrCode = crypto.randomBytes(16).toString('hex');
     const qrCodeImage = await QRCode.toDataURL(qrCode);
 
-    // Create booking
     const booking = await Booking.create({
       user: user._id,
       event: eventId,
@@ -516,7 +498,6 @@ exports.createManualBooking = async (req, res) => {
       createdBy: req.user._id
     });
 
-    // Update event booked seats
     await event.updateBookedSeats(seatCount);
 
     res.status(201).json({
@@ -533,7 +514,6 @@ exports.createManualBooking = async (req, res) => {
   }
 };
 
-// Update booking status (Admin)
 exports.updateBookingStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -562,5 +542,124 @@ exports.updateBookingStatus = async (req, res) => {
       message: 'Failed to update booking status',
       error: error.message
     });
+  }
+};
+
+exports.createGuestRequest = async (req, res) => {
+  try {
+    const { eventId, seatCount, guestDetails, memberIdInput } = req.body;
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    const member = await User.findOne({ memberId: memberIdInput.toUpperCase(), role: 'member' });
+    if (!member) {
+      return res.status(400).json({ message: "Invalid Member ID" });
+    }
+
+    const unitPrice = event.guestPrice;
+    const totalAmount = unitPrice * seatCount;
+    const qrCode = crypto.randomBytes(16).toString('hex');
+    const qrCodeImage = await QRCode.toDataURL(qrCode);
+    const timestamp = Date.now().toString();
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const bookingId = `SRS_GUEST${timestamp}${random}`;
+  
+     const qrScanLimit = seatCount;
+    const booking = await Booking.create({
+      event: eventId,
+      bookingType: 'guest',
+      seatCount,
+      bookingId,
+      unitPrice,
+      qrCode,
+      totalAmount,
+      guestDetails,
+      qrScanLimit,
+      qrScanLimit,
+      qrCodeImage,
+      sponsoringMemberId: member._id,
+      memberIdInput: memberIdInput.toUpperCase(),
+      status: 'pending_approval'
+    });
+
+
+    res.status(201).json({
+      success: true,
+      message: "Request sent to member for approval",
+      data: { bookingId: booking.bookingId }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.approveGuestRequest = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking || booking.bookingType !== 'guest') {
+      return res.status(404).json({ message: "Invalid request" });
+    }
+
+    if (booking.sponsoringMemberId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    booking.status = 'approved';
+    booking.approvalDate = new Date();
+    await booking.save();
+
+
+    res.json({ success: true, message: "Guest request approved" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.rejectGuestRequest = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking || booking.sponsoringMemberId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    booking.status = 'rejected';
+    booking.rejectionReason = req.body.reason || "Not approved";
+    await booking.save();
+
+    res.json({ success: true, message: "Request rejected" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getGuestBookingStatus = async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ bookingId: req.params.bookingId })
+      .populate('event', 'title startDate location bannerImage guestPrice')
+      .select('bookingId status totalAmount seatCount guestDetails event createdAt');
+
+    if (!booking) return res.status(404).json({ message: "Not found" });
+
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+exports.getMemberRequests = async (req, res) => {
+  try {
+    
+    const requests = await Booking.find({ sponsoringMemberId: req.user._id, bookingType: 'guest' })
+    .populate('event', 'title startDate bannerImage location')
+    .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: requests.length,
+      data: requests
+    });
+  } catch (err) {
+    console.log("err = ", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };

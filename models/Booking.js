@@ -9,7 +9,7 @@ const bookingSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SRS_User',
-    required: [true, 'User is required']
+    // required: [true, 'User is required']
   },
   event: {
     type: mongoose.Schema.Types.ObjectId,
@@ -38,22 +38,26 @@ const bookingSchema = new mongoose.Schema({
   },
   
   
-  sponsoringMemberId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'SRS_User'
-  },
-  guestDetails: {
-    firstName: String,
+sponsoringMemberId: { type: mongoose.Schema.Types.ObjectId, ref: 'SRS_User' },
+  memberIdInput: { type: String }, // the MEMBERID guest typed
+ guestDetails: {
+    firstName: { type: String, required: true },
     lastName: String,
-    email: String,
-    phone: String
+    email: { type: String, required: true },
+    phone: { type: String, required: true }
   },
   
   
-  status: {
+ status: {
     type: String,
-    enum: ['pending', 'confirmed', 'cancelled', 'refunded', 'completed'],
-    default: 'pending'
+    enum: [
+      'pending_approval',   // waiting for member
+      'approved',           // member accepted
+      'rejected',           // member rejected
+      'confirmed',          // payment done
+      'cancelled'
+    ],
+    default: 'pending_approval'
   },
   
   

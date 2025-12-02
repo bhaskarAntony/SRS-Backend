@@ -12,6 +12,7 @@ const eventRoutes = require('./routes/eventRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const userRoutes = require('./routes/userRoutes');
+const memberRoutes = require('./routes/memberRoutes');
 
 
 const errorHandler = require('./middleware/errorHandler');
@@ -73,6 +74,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/member', memberRoutes);
 
 
 app.use(errorHandler);

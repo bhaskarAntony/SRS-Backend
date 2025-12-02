@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Phone number is required'],
     trim: true,
-    match: [/^[+]?[1-9][\d]{9,14}$/, 'Please provide a valid phone number']
+    // match: [/^[+]?[1-9][\d]{9,14}$/, 'Please provide a valid phone number']
   },
   password: {
     type: String,
@@ -34,6 +34,13 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Password must be at least 6 characters'],
     select: false
   },
+  memberId: {
+  type: String,
+  unique: true,
+  sparse: true,
+  trim: true,
+  uppercase: true
+},
   role: {
     type: String,
     enum: ['user', 'member', 'admin'],
