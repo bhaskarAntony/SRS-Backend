@@ -1,7 +1,7 @@
 const Event = require('../models/Event');
 const Favorite = require('../models/Favorite');
 
-// Get all events with filters and pagination
+// Get all events
 exports.getAllEvents = async (req, res) => {
   try {
     const {
@@ -14,13 +14,10 @@ exports.getAllEvents = async (req, res) => {
       dateRange,
       status = 'published'
     } = req.query;
-
-    // Build filter object
     const filter = { status };
-
     if (category) filter.category = category;
     if (location) filter.location = new RegExp(location, 'i');
-    
+   
     if (search) {
       filter.$or = [
         { title: new RegExp(search, 'i') },
@@ -29,7 +26,6 @@ exports.getAllEvents = async (req, res) => {
         { tags: { $in: [new RegExp(search, 'i')] } }
       ];
     }
-
     // Price range filter
     if (priceRange) {
       const [min, max] = priceRange.split('-');
@@ -39,7 +35,6 @@ exports.getAllEvents = async (req, res) => {
         filter.userPrice = { $gte: parseInt(min), $lte: parseInt(max) };
       }
     }
-
     // Date range filter
     if (dateRange) {
       const now = new Date();
@@ -79,7 +74,6 @@ exports.getAllEvents = async (req, res) => {
           break;
       }
     }
-
     const options = {
       page: parseInt(page),
       limit: parseInt(limit),
@@ -89,9 +83,7 @@ exports.getAllEvents = async (req, res) => {
         select: 'firstName lastName email'
       }
     };
-
     const events = await Event.paginate(filter, options);
-
     res.status(200).json({
       status: 'success',
       data: events.docs,
@@ -117,17 +109,13 @@ exports.getEventById = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id)
       .populate('createdBy', 'firstName lastName email');
-
     if (!event) {
       return res.status(404).json({
         status: 'error',
         message: 'Event not found'
       });
     }
-
-    // Increment view count
     await event.incrementViewCount();
-
     res.status(200).json({
       status: 'success',
       data: event
@@ -151,7 +139,6 @@ exports.getFeaturedEvents = async (req, res) => {
     })
     .sort({ startDate: 1 })
     .limit(6);
-
     res.status(200).json({
       status: 'success',
       data: events
@@ -169,14 +156,12 @@ exports.getFeaturedEvents = async (req, res) => {
 exports.getUpcomingEvents = async (req, res) => {
   try {
     const { limit = 6 } = req.query;
-
     const events = await Event.find({
       status: 'published',
       startDate: { $gte: new Date() }
     })
     .sort({ startDate: 1 })
     .limit(parseInt(limit));
-
     res.status(200).json({
       status: 'success',
       data: events
@@ -194,19 +179,15 @@ exports.getUpcomingEvents = async (req, res) => {
 exports.searchEvents = async (req, res) => {
   try {
     const { q, category, location, priceRange } = req.query;
-
     const filter = {
       status: 'published',
       startDate: { $gte: new Date() }
     };
-
     if (q) {
       filter.$text = { $search: q };
     }
-
     if (category) filter.category = category;
     if (location) filter.location = new RegExp(location, 'i');
-
     if (priceRange) {
       const [min, max] = priceRange.split('-');
       if (max === '+') {
@@ -215,11 +196,9 @@ exports.searchEvents = async (req, res) => {
         filter.userPrice = { $gte: parseInt(min), $lte: parseInt(max) };
       }
     }
-
     const events = await Event.find(filter)
       .sort(q ? { score: { $meta: 'textScore' } } : { startDate: 1 })
       .limit(20);
-
     res.status(200).json({
       status: 'success',
       data: events
@@ -240,9 +219,7 @@ exports.createEvent = async (req, res) => {
       ...req.body,
       createdBy: req.user._id
     };
-
     const event = await Event.create(eventData);
-
     res.status(201).json({
       status: 'success',
       message: 'Event created successfully',
@@ -268,14 +245,12 @@ exports.updateEvent = async (req, res) => {
       },
       { new: true, runValidators: true }
     );
-
     if (!event) {
       return res.status(404).json({
         status: 'error',
         message: 'Event not found'
       });
     }
-
     res.status(200).json({
       status: 'success',
       message: 'Event updated successfully',
@@ -298,14 +273,12 @@ exports.deleteEvent = async (req, res) => {
       { isActive: false },
       { new: true }
     );
-
     if (!event) {
       return res.status(404).json({
         status: 'error',
         message: 'Event not found'
       });
     }
-
     res.status(200).json({
       status: 'success',
       message: 'Event deleted successfully'
@@ -323,20 +296,17 @@ exports.deleteEvent = async (req, res) => {
 exports.updateEventStatus = async (req, res) => {
   try {
     const { status } = req.body;
-
     const event = await Event.findByIdAndUpdate(
       req.params.id,
       { status, lastModifiedBy: req.user._id },
       { new: true }
     );
-
     if (!event) {
       return res.status(404).json({
         status: 'error',
         message: 'Event not found'
       });
     }
-
     res.status(200).json({
       status: 'success',
       message: 'Event status updated successfully',
@@ -356,16 +326,14 @@ exports.toggleFavorite = async (req, res) => {
   try {
     const eventId = req.params.id;
     const userId = req.user._id;
-
     const existingFavorite = await Favorite.findOne({
       user: userId,
       event: eventId
     });
-
     if (existingFavorite) {
       await Favorite.findByIdAndDelete(existingFavorite._id);
       await Event.findByIdAndUpdate(eventId, { $inc: { favoriteCount: -1 } });
-      
+     
       res.status(200).json({
         status: 'success',
         message: 'Removed from favorites',
@@ -374,7 +342,7 @@ exports.toggleFavorite = async (req, res) => {
     } else {
       await Favorite.create({ user: userId, event: eventId });
       await Event.findByIdAndUpdate(eventId, { $inc: { favoriteCount: 1 } });
-      
+     
       res.status(200).json({
         status: 'success',
         message: 'Added to favorites',

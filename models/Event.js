@@ -14,6 +14,28 @@ const faqSchema = new mongoose.Schema({
   }
 });
 
+const seatingCategorySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  price: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  capacity: {
+    type: Number,
+    required: true,
+    min: 1
+  },
+  booked: {
+    type: Number,
+    default: 0
+  }
+});
+
 const eventSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -49,6 +71,10 @@ const eventSchema = new mongoose.Schema({
   endDate: {
     type: Date,
     required: [true, 'End date is required']
+  },
+  actualDateOfEvent: {
+    type: Date, // NEW: From PDF change 1
+    required: [true, 'Actual date of event is required']
   },
   duration: {
     type: String,
@@ -88,7 +114,6 @@ const eventSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
-  
   userPrice: {
     type: Number,
     required: [true, 'User price is required'],
@@ -104,7 +129,12 @@ const eventSchema = new mongoose.Schema({
     required: [true, 'Guest price is required'],
     min: [0, 'Price cannot be negative']
   },
-  
+  kidPrice: {
+    type: Number,
+    default: 850,
+    min: [0, 'Price cannot be negative']
+  },
+  seatingCategories: [seatingCategorySchema], // NEW: From PDF change 2 (stalls categories)
   maxCapacity: {
     type: Number,
     required: [true, 'Maximum capacity is required'],
@@ -121,15 +151,18 @@ const eventSchema = new mongoose.Schema({
   },
   maxTicketsPerMember: {
     type: Number,
-    default: 10,
+    default: 4, // Updated from PDF
     min: [1, 'Must allow at least 1 ticket per member']
   },
   maxTicketsPerGuest: {
     type: Number,
-    default: 3,
+    default: 10, // Updated from PDF
     min: [1, 'Must allow at least 1 ticket per guest']
   },
-  
+  maxTicketsPerKid: {
+    type: Number,
+    default: 0, // 0 = unlimited
+  },
   organizer: {
     name: {
       type: String,
@@ -155,34 +188,28 @@ const eventSchema = new mongoose.Schema({
       trim: true
     }
   },
-  
   highlights: [{
     type: String,
     trim: true
   }],
-  
   seatingType: {
     type: String,
     enum: ['Open', 'Reserved', 'Mixed'],
     default: 'Open'
   },
-  
   ageRestriction: {
     type: String,
     enum: ['All Ages', '18+', '21+', 'Kids Only'],
     default: 'All Ages'
   },
-  
   dresscode: {
     type: String,
     trim: true
   },
-  
   specialNotes: {
     type: String,
     trim: true
   },
-  
   terms: {
     type: String,
     trim: true
@@ -196,9 +223,7 @@ const eventSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  
   faqs: [faqSchema],
-  
   status: {
     type: String,
     enum: ['draft', 'published', 'cancelled', 'completed'],
@@ -212,7 +237,6 @@ const eventSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  
   registrationStartDate: {
     type: Date,
     default: Date.now
@@ -220,14 +244,12 @@ const eventSchema = new mongoose.Schema({
   registrationEndDate: {
     type: Date
   },
-  
   socialMedia: {
     facebook: String,
     twitter: String,
     instagram: String,
     linkedin: String
   },
-  
   hasRefreshments: {
     type: Boolean,
     default: false
@@ -244,7 +266,6 @@ const eventSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  
   viewCount: {
     type: Number,
     default: 0
@@ -253,7 +274,6 @@ const eventSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SRS_User',
@@ -276,7 +296,6 @@ eventSchema.index({ status: 1 });
 eventSchema.index({ featured: 1 });
 eventSchema.index({ 'organizer.name': 1 });
 eventSchema.index({ tags: 1 });
-
 eventSchema.index({
   title: 'text',
   description: 'text',
@@ -310,12 +329,17 @@ eventSchema.pre('save', function(next) {
     const error = new Error('End date must be after start date');
     return next(error);
   }
-  
+
+  if (this.actualDateOfEvent && (this.actualDateOfEvent < this.startDate || this.actualDateOfEvent > this.endDate)) {
+    const error = new Error('Actual date must be between start and end date');
+    return next(error);
+  }
+
   if (this.memberPrice > this.userPrice) {
     const error = new Error('Member price cannot be higher than user price');
     return next(error);
   }
-  
+
   next();
 });
 
