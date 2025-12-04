@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { authenticate, authorizeAdmin } = require('./authController');
+// const { authenticate, authorizeAdmin } = require('./authController');
+const { parseMembersExcel, importMembers } = require('../services/excelService');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || "shhdhdhdhdhhdhd", { expiresIn: '7d' });
@@ -131,5 +132,35 @@ exports.memberLogin = async (req, res) => {
   } catch (error) {
     console.error('Member login error:', error);
     res.status(500).json({ status: 'error', message: 'Login failed' });
+  }
+};
+
+exports.importMembersController = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Excel file is required'
+      });
+    }
+
+    const parsed = parseMembersExcel(req.file.buffer);
+    const result = await importMembers(parsed);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Members imported',
+      total: parsed.length,
+      imported: result.filter(r => r.status === 'success').length,
+      failed: result.filter(r => r.status !== 'success').length,
+      data: result
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to import members',
+      error: error.message
+    });
   }
 };

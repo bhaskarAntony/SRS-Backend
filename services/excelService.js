@@ -4,123 +4,83 @@ const emailService = require('./emailService');
 const crypto = require('crypto');
 
 
-exports.parseUsersExcel = (buffer) => {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
-  const data = XLSX.utils.sheet_to_json(worksheet);
-
-  return data.map(row => ({
-    firstName: row['First Name'] || row.firstName,
-    lastName: row['Last Name'] || row.lastName,
-    email: row['Email'] || row.email,
-    phone: row['Phone'] || row.phone,
-    password: row['Password'] || 'temp123'
-  }));
-};
-
-
-exports.importUsers = async (users) => {
-  const results = {
-    success: 0,
-    failed: 0,
-    errors: []
-  };
-
-  for (const userData of users) {
-    try {
-      await User.create({
-        ...userData,
-        role: 'user'
-      });
-      results.success++;
-    } catch (error) {
-      results.failed++;
-      results.errors.push({
-        email: userData.email,
-        error: error.message
-      });
-    }
-  }
-
-  return results;
-};
-
-
-exports.exportUsers = async (users) => {
-  const data = users.map(user => ({
-    'First Name': user.firstName,
-    'Last Name': user.lastName,
-    'Email': user.email,
-    'Phone': user.phone,
-    'Created At': user.createdAt.toISOString().split('T')[0]
-  }));
-
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Users');
-
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-};
-
-
 exports.parseMembersExcel = (buffer) => {
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
+
   const data = XLSX.utils.sheet_to_json(worksheet);
 
   return data.map(row => ({
-    firstName: row['First Name'] || row.firstName,
-    lastName: row['Last Name'] || row.lastName,
-    email: row['Email'] || row.email,
-    phone: row['Phone'] || row.phone,
-    membershipTier: row['Membership Tier'] || row.membershipTier || 'Gold',
-    sponsoredBy: row['Sponsored By'] || row.sponsoredBy
+    firstName: row['First Name'] || row['firstName'] || row['FIRSTNAME'] || '',
+    memberId: row['Member ID'] || row['memberId'] || row['MEMBERID'] || '',
   }));
 };
 
 
-exports.importMembers = async (members) => {
-  const results = {
-    success: 0,
-    failed: 0,
-    errors: []
-  };
+// 2) IMPORT MULTIPLE MEMBERS
+exports.importMembers = async (membersList) => {
+  const results = [];
 
-  for (const memberData of members) {
-    try {
-      
-      const tempPassword = crypto.randomBytes(8).toString('hex');
-      
-      const member = await User.create({
-        ...memberData,
-        role: 'member',
-        password: tempPassword,
-        membershipDate: new Date()
-      });
+  for (const row of membersList) {
+    const firstName = String(row.firstName || '').trim();
+    const memberId = String(row.memberId || '').trim().toUpperCase();
 
-      
-      await emailService.sendMemberCredentials(member.email, {
-        firstName: member.firstName,
-        email: member.email,
-        password: tempPassword,
-        loginUrl: `${process.env.FRONTEND_URL}/login`
+    if (!firstName || !memberId) {
+      results.push({
+        memberId,
+        firstName,
+        status: 'failed',
+        reason: 'Missing firstName or memberId'
       });
-
-      results.success++;
-    } catch (error) {
-      results.failed++;
-      results.errors.push({
-        email: memberData.email,
-        error: error.message
-      });
+      continue;
     }
+
+    // Check Duplicate
+    const exists = await User.findOne({ memberId, role: 'member' });
+
+    if (exists) {
+      results.push({
+        memberId,
+        firstName,
+        status: 'failed',
+        reason: 'Member ID already exists'
+      });
+      continue;
+    }
+
+    // Auto-generate credentials
+ const password = `${firstName.toLowerCase()}@${memberId.toLowerCase()}`;
+const fakeEmail = `${firstName.toLowerCase()}.${memberId.toLowerCase()}@membersrs.com`;
+const phone = `+91${memberId.replace(/[^0-9]/g, '')}`;
+
+    // Create User
+    const newMember = await User.create({
+      firstName,
+      lastName: '',
+      email: fakeEmail,
+      phone,
+      password,
+      role: 'member',
+      memberId,
+      isActive: true
+    });
+
+    newMember.password = undefined;
+
+    results.push({
+      status: 'success',
+      memberId,
+      firstName,
+      loginInfo: {
+        email: fakeEmail,
+        password,
+      }
+    });
   }
 
   return results;
 };
-
 
 exports.exportMembers = async (members) => {
   const data = members.map(member => ({

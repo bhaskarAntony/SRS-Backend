@@ -591,7 +591,7 @@ exports.createOfflineBooking = async (req, res) => {
 
     // Calculate totals
     const seatCount = memberTicketCount + guestTicketCount + kidTicketCount;
-    const grossAmount = (memberTicketCount * event.memberPrice) + (guestTicketCount * event.guestPrice) + (kidTicketCount * event.kidPrice);
+    const grossAmount = (memberTicketCount * 1500) + (guestTicketCount * 2100) + (kidTicketCount * 850);
 
     // Discount
     let discountPercent = 0;
@@ -630,6 +630,7 @@ exports.createOfflineBooking = async (req, res) => {
       user: member ? member._id : null,
       bookingType: 'offline', // NEW enum value? Add to model if needed
       seatCount,
+      eventName:event.title,
       bookingId,
       unitPrice: 0, // Not applicable for mixed
       grossAmount,

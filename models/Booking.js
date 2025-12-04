@@ -46,6 +46,7 @@ const bookingSchema = new mongoose.Schema({
   contactNumber:{
     type:String
   },
+  eventName:{type:String},
   totalAmount: {
     type: Number,
     required: [true, 'Total amount is required'],
