@@ -192,10 +192,10 @@ bookingSchema.pre('save', async function(next) {
   }
 
   // Validate meal counts
-  const totalMeals = this.memberVegCount + this.memberNonVegCount + this.guestVegCount + this.guestNonVegCount + this.kidVegCount + this.kidNonVegCount;
-  if (totalMeals !== this.seatCount) {
-    return next(new Error('Total meal count must match seat count'));
-  }
+  // const totalMeals = this.memberVegCount + this.memberNonVegCount + this.guestVegCount + this.guestNonVegCount + this.kidVegCount + this.kidNonVegCount;
+  // if (totalMeals !== this.seatCount) {
+  //   return next(new Error('Total meal count must match seat count'));
+  // }
 
   next();
 });
