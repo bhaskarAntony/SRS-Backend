@@ -268,29 +268,34 @@ exports.updateEvent = async (req, res) => {
 // Delete event (Admin only)
 exports.deleteEvent = async (req, res) => {
   try {
-    const event = await Event.findByIdAndUpdate(
-      req.params.id
-      // { isActive: false },
-      // { new: true }
-    );
+    // Check exists
+    const event = await Event.findById(req.params.id);
+
     if (!event) {
       return res.status(404).json({
         status: 'error',
         message: 'Event not found'
       });
     }
-    res.status(200).json({
+
+    // Correct delete syntax
+    const dltEvent = await Event.deleteOne({ _id: req.params.id });
+
+    return res.status(200).json({
       status: 'success',
-      message: 'Event deleted successfully'
+      message: 'Event deleted successfully',
+      data: dltEvent
     });
+
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       status: 'error',
       message: 'Failed to delete event',
       error: error.message
     });
   }
 };
+
 
 // Update event status (Admin only)
 exports.updateEventStatus = async (req, res) => {
