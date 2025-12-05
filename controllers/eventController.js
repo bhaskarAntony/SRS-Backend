@@ -269,9 +269,9 @@ exports.updateEvent = async (req, res) => {
 exports.deleteEvent = async (req, res) => {
   try {
     const event = await Event.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
+      req.params.id
+      // { isActive: false },
+      // { new: true }
     );
     if (!event) {
       return res.status(404).json({
