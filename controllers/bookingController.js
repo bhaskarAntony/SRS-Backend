@@ -584,3 +584,50 @@ exports.getMemberRequests = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// bookingController.js
+exports.getBookingsByMemberId = async (req, res) => {
+  try {
+    const { memberId } = req.params; // e.g., "0001", "12345"
+
+    if (!memberId?.trim()) {
+      return res.status(400).json({ success: false, message: "Member ID required" });
+    }
+
+    // Step 1: Find the User (SRS_User) by memberId (custom field)
+    const member = await User.findOne({ memberId: memberId.trim() });
+    // Or if the field is named differently, try:
+    // const member = await User.findOne({ memberId: memberId.trim() });
+    // OR
+    // const member = await User.findOne({ membershipId: memberId.trim() });
+
+    if (!member) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Member not found in system" 
+      });
+    }
+
+    // Step 2: Now find bookings where `user` field = member's _id
+    const bookings = await Booking.find({ user: member._id })
+      .populate('event', 'title mapsUrl startDate')
+      .sort({ bookingDate: -1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      memberName: member.fullName || member.name,
+      memberId: memberId,
+      totalBookings: bookings.length,
+      data: bookings
+    });
+
+  } catch (error) {
+    console.error("getBookingsByMemberId error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error", 
+      error: error.message 
+    });
+  }
+};

@@ -10,6 +10,7 @@ router.get('/member-requests', authenticate, bookingController.getMemberRequests
 router.post('/', authenticate, bookingController.createBooking);
 router.get('/user', authenticate, bookingController.getUserBookings);
 router.get('/:id', authenticate, bookingController.getBookingById);
+router.get('/member/:memberId', authenticate, bookingController.getBookingsByMemberId);
 router.put('/:id/cancel', authenticate, bookingController.cancelBooking);
 router.get('/:id/ticket', authenticate, bookingController.downloadTicket);
 router.post('/scan-qr', authenticate, bookingController.scanQRCode);

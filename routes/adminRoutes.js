@@ -33,6 +33,7 @@ router.get('/members/template', adminController.getMemberTemplate);
 router.post('/offline-bookings', adminController.createOfflineBooking);
 router.get('/offline-bookings', adminController.getOfflineBookings);
 router.put('/offline-bookings/:id', adminController.editOfflineBooking);
+router.delete('/offline-bookings/:id', adminController.deleteOfflineBooking);
 router.get('/offline-bookings/export', adminController.exportBookingsCSV);
 router.get('/offline-bookings/whatsapp/:id', adminController.getWhatsAppShareLink);
 

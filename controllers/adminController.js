@@ -724,6 +724,39 @@ exports.getOfflineBookings = async (req, res) => {
   }
 };
 
+exports.deleteOfflineBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if booking exists
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Booking not found"
+      });
+    }
+
+    // Delete booking
+    const deletedBooking = await Booking.findByIdAndDelete(id);
+
+    res.status(200).json({
+      status: "success",
+      message: "Offline booking deleted successfully",
+      deletedData: deletedBooking,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Failed to delete offline booking",
+      error: error.message,
+    });
+  }
+};
+
+
 // NEW: Edit Offline Booking
 exports.editOfflineBooking = async (req, res) => {
   try {
