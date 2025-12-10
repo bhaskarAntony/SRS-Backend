@@ -14,6 +14,7 @@ router.get('/member/:memberId', authenticate, bookingController.getBookingsByMem
 router.put('/:id/cancel', authenticate, bookingController.cancelBooking);
 router.get('/:id/ticket', authenticate, bookingController.downloadTicket);
 router.post('/scan-qr', authenticate, bookingController.scanQRCode);
+router.post('/check-qr', authenticate, bookingController.checkQrOnly);
 router.post('/payment/initiate', authenticate, bookingController.initiatePayment);
 router.post('/payment/verify', bookingController.verifyPayment);
 

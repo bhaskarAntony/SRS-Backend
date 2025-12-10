@@ -232,50 +232,141 @@ exports.downloadTicket = async (req, res) => {
   }
 };
 
+// controllers/bookingController.js
+
 exports.scanQRCode = async (req, res) => {
   try {
-    const { qrCode, location, notes } = req.body;
+    const { qrCode, location, notes, count = 1 } = req.body; // count = how many to scan
+    const scanCount = parseInt(count);
+
+    if (isNaN(scanCount) || scanCount < 1) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid scan count',
+      });
+    }
+
     const booking = await Booking.findOne({ qrCode })
-      .populate('event', 'title startDate location')
+      .populate('event', 'title startDate venue')
       .populate('user', 'firstName lastName email');
+
     if (!booking) {
       return res.status(404).json({
         status: 'error',
-        message: 'Invalid QR code'
+        message: 'Invalid QR code',
       });
     }
+
     if (!booking.canBeScanned) {
       return res.status(400).json({
         status: 'error',
         message: 'QR code cannot be scanned',
-        reason: booking.status !== 'confirmed' ? 'Booking not confirmed' :
-                booking.paymentStatus !== 'completed' ? 'Payment not completed' :
-                'QR code fully used'
+        reason:
+          booking.status !== 'confirmed'
+            ? 'Booking not confirmed'
+            : booking.paymentStatus !== 'completed'
+            ? 'Payment not completed'
+            : 'No entries remaining',
       });
     }
-    await booking.scanQR(req.user._id, location, notes);
+
+    const remaining = booking.remainingScans;
+    if (scanCount > remaining) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Only ${remaining} entr${remaining > 1 ? 'ies' : 'y'} remaining`,
+        reason: `Requested ${scanCount}, but only ${remaining} left`,
+      });
+    }
+
+    // Perform multiple scans
+    for (let i = 0; i < scanCount; i++) {
+      booking.qrScans.push({
+        scannedBy: req.user._id,
+        location: location || 'Gate Entry',
+        notes: notes || `Bulk scan (${scanCount} entries)`,
+        scannedAt: new Date(),
+      });
+    }
+
+    booking.qrScanCount += scanCount;
+
+    await booking.save();
+
     res.status(200).json({
       status: 'success',
-      message: 'QR code scanned successfully',
+      message: `Scanned ${scanCount} entr${scanCount > 1 ? 'ies' : 'y'} successfully`,
       data: {
         booking: {
           bookingId: booking.bookingId,
           event: booking.event,
           user: booking.user,
           seatCount: booking.seatCount,
-          remainingScans: booking.remainingScans
-        }
-      }
+          qrScanCount: booking.qrScanCount,
+          remainingScans: booking.remainingScans,
+          justScanned: scanCount,
+        },
+      },
     });
   } catch (error) {
     res.status(500).json({
       status: 'error',
-      message: 'Failed to scan QR code',
-      error: error.message
+      message: 'Scan failed',
+      error: error.message,
     });
   }
 };
 
+exports.checkQrOnly = async (req, res) => {
+  try {
+    const { qrCode } = req.body;
+    if (!qrCode) return res.status(400).json({ message: 'QR code is required' });
+
+    const booking = await Booking.findOne({ qrCode })
+      .populate('event', 'title startDate venue')
+      .populate('user', 'firstName lastName email');
+
+    if (!booking) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'QR code not found'
+      });
+    }
+
+    if (!booking.canBeScanned) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'This QR code cannot be used',
+        reason: booking.status !== 'confirmed' 
+          ? 'Booking not confirmed' 
+          : booking.paymentStatus !== 'completed' 
+          ? 'Payment pending' 
+          : 'All entries already used'
+      });
+    }
+
+    res.json({
+      status: 'success',
+      data: {
+        booking: {
+          bookingId: booking.bookingId,
+          event: booking.event,
+          user: booking.user,
+          seatCount: booking.seatCount,
+          qrScanCount: booking.qrScanCount,
+          remainingScans: booking.remainingScans,
+        }
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
 exports.initiatePayment = async (req, res) => {
   try {
     const { bookingId, amount } = req.body;

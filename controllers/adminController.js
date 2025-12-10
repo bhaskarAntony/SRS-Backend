@@ -21,7 +21,10 @@ exports.getDashboardStats = async (req, res) => {
       mealSummary,
       totalDiscounts,
       amountCollected,
-      paymentBreakdown
+      paymentBreakdown,
+      totalTicketsBooked,
+  totalTicketsScanned,
+  totalTicketsRemaining
     ] = await Promise.all([
       User.countDocuments({ role: 'user', isActive: true }),
       User.countDocuments({ role: 'member', isActive: true }),
@@ -62,13 +65,33 @@ exports.getDashboardStats = async (req, res) => {
       ]),
       Booking.aggregate([
         { $group: { _id: '$paymentStatus', count: { $sum: 1 } } }
-      ])
+      ]),
+      // ... existing promises ...
+
+// New: Total tickets booked (sum of seatCount)
+ Booking.aggregate([
+  { $group: { _id: null, total: { $sum: '$seatCount' } } }
+]),
+
+// New: Total tickets scanned (sum of qrScanCount)
+ Booking.aggregate([
+  { $group: { _id: null, total: { $sum: '$qrScanCount' } } }
+]),
+
+// New: Total tickets remaining (sum of remainingScans, which is qrScanLimit - qrScanCount)
+Booking.aggregate([
+  { $project: { remaining: { $subtract: ['$qrScanLimit', '$qrScanCount'] } } },
+  { $group: { _id: null, total: { $sum: '$remaining' } } }
+]),
     ]);
 
     res.status(200).json({
       status: 'success',
       data: {
         stats: {
+          totalTicketsBooked: totalTicketsBooked[0]?.total || 0,
+totalTicketsScanned: totalTicketsScanned[0]?.total || 0,
+totalTicketsRemaining: Math.max(0, totalTicketsRemaining[0]?.total || 0),
           totalUsers,
           totalMembers,
           totalEvents,
