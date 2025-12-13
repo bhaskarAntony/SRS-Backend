@@ -614,7 +614,7 @@ exports.createOfflineBooking = async (req, res) => {
 
     // Calculate totals
     const seatCount = memberTicketCount + guestTicketCount + kidTicketCount;
-    const grossAmount = (memberTicketCount * 1500) + (guestTicketCount * 2100) + (kidTicketCount * 850);
+    const grossAmount = (memberTicketCount * 1500) + (guestTicketCount * 2000) + (kidTicketCount * 850);
 
     // Discount
     let discountPercent = 0;
