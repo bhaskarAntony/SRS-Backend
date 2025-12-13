@@ -399,23 +399,30 @@ exports.getAllMembers = async (req, res) => {
 // Create member
 exports.createMember = async (req, res) => {
   try {
-    const tempPassword = crypto.randomBytes(8).toString('hex');
    
-    const memberData = {
-      ...req.body,
-      role: 'member',
-      password: tempPassword,
-      membershipDate: new Date()
-    };
-    const member = await User.create(memberData);
+    const password = `${firstName.toLowerCase()}@${memberId.toLowerCase()}`;
+    const fakeEmail = `${firstName.toLowerCase()}.${memberId.toLowerCase()}@membersrs.com`;
+    const phone = `+91${memberId.replace(/[^0-9]/g, '')}`;
+    
+        // Create User
+        const newMember = new  User({
+          ...req.body,
+          email: fakeEmail,
+          phone,
+          password,
+          role: 'member',
+          isActive: true
+        });
+        await newMember.save()
+    
    
-    await emailService.sendMemberCredentials(member.email, {
-      firstName: member.firstName,
-      email: member.email,
-      password: tempPassword,
-      loginUrl: `${process.env.FRONTEND_URL}/login`
-    });
-    member.password = undefined;
+    // await emailService.sendMemberCredentials(member.email, {
+    //   firstName: member.firstName,
+    //   email: member.email,
+    //   password: tempPassword,
+    //   loginUrl: `${process.env.FRONTEND_URL}/login`
+    // });
+    // member.password = undefined;
     res.status(201).json({
       status: 'success',
       message: 'Member created successfully and credentials sent via email',
