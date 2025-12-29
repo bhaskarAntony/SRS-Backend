@@ -629,7 +629,8 @@ exports.createOfflineBooking = async (req, res) => {
       const validCodes = {
         'Discount52026': 5,
         'Discount102026': 10,
-        'Discount152026': 15
+        'Discount152026': 15,
+        'Discount1002026': 100
       };
       discountPercent = validCodes[discountCode] || 0;
     }
